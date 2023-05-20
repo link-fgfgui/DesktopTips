@@ -1,6 +1,7 @@
 /.idea
 /csvs
-/main*
+/main.build
+/main.dist
 /nsis
 /test
 Classes.jpg
