@@ -1,0 +1,1 @@
+nuitka --standalone --show-progress --windows-disable-console --show-memory --enable-plugin=pyqt5 --windows-icon-from-ico=icon.ico --windows-product-name=DT --windows-file-description=DesktopTips --windows-product-version=0.0.2 --windows-company=link-fgfgui main.py
