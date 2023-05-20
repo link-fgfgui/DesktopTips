@@ -1,57 +1,37 @@
 from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork
 import csv, sys, datetime, time
-from ..FLBasicModule.CONFIG import Config
+from FLBasicModule import CONFIG,LSS
 
 app_name = "DesktopTips"
-c=Config(
+c=CONFIG.Config(
     app_name=app_name,
     format2={
-                "isOnOut":False,
-                "isOffOut":False
+                "isOut":["on"], #["on"]/["off"]/[""]/["on","off"]
+                "isShowLast":["on"],
+                "Debug":False, #True/False
+                "Thing":"中考",
+                "Date":"2023.6.18"
              },
     is_json=True,
     is_log=False
     )
 
-class LocalSocSer:
-    def __init__(self, app_name: str):
-        self.socket = QtNetwork.QLocalSocket()
-        self.socket.connected.connect(self.send_message_and_exit)
-        self.socket.connectToServer(app_name)
-        if True:
-            self.server = QtNetwork.QLocalServer()
-            self.socket.connected.disconnect()
-            self.socket.disconnectFromServer()
-            self.server.listen(app_name)
-            self.server.newConnection.connect(self.new_program_started)
-            if self.server.serverError() == QtNetwork.QAbstractSocket.AddressInUseError:
-                QtNetwork.QLocalServer.removeServer(app_name)
-                self.server.listen(app_name)
-
-    def new_program_started(self):
-        self.socket2 = self.server.nextPendingConnection()
-        self.socket2.readyRead.connect(self.read_and_exec)
-
-    def read_and_exec(self):
-        s = self.socket2.readAll()
+def ex_fun(s):
+    try:
         print(s.data())
-        st = s.data()
-        if st == b'exit':
+        st = s.data().decode()
+        if st == 'exit':
             app.exit()
 
-    def send_message_and_exit(self):
-        try:
-            self.server.close()
-        except:
-            pass
-        self.socket.write(b'test')
-        self.socket.disconnectFromServer()
-        self.socket.waitForDisconnected(250)
-        raise SystemExit
+        elif 'ST' in st and c.c["Debug"]==True:#if "set time" command in st
+                tstring=st[2:]
+                tt=time.strptime(tstring,"%H:%M:%S")
+                dtobj=datetime.datetime(timer.t.year,timer.t.month,timer.t.day,tt.tm_hour,tt.tm_min,tt.tm_sec)
+                timer.t=dtobj
+                
+    except Exception as e:
+        print(e.__class__.__name__,e)
 
-    def send_message(self, app_name: str, content: bytes):
-        self.socket.connectToServer(app_name)
-        self.socket.connected.connect(lambda: self.socket.write(content))
 
 
 class Timer(QtCore.QTimer):
@@ -59,6 +39,7 @@ class Timer(QtCore.QTimer):
         super().__init__()
         self.sub = None
         self.Now = 0
+        self.t = datetime.datetime.now()
         self.eachSecond()
         self.timeout.connect(self.eachSecond)
         self.start(1000)
@@ -67,7 +48,11 @@ class Timer(QtCore.QTimer):
         return (da.hour * 60 * 60 + da.minute * 60 + da.second) - (db.hour * 60 * 60 + db.minute * 60 + db.second)
 
     def eachSecond(self):
-        self.t = datetime.datetime.now()
+        if c.c["Debug"]:
+            self.t = datetime.datetime.fromtimestamp(self.t.timestamp()+1)
+        else:
+            self.t = datetime.datetime.now()
+        self.tododay=datetime.date.fromtimestamp(time.mktime(time.strptime(c.c["Date"],"%Y.%m.%d"))) - datetime.date(self.t.year,self.t.month,self.t.day)
         self.lessons = csvRowList[self.t.weekday()]
         dt_now = datetime.time(self.t.hour, self.t.minute, self.t.second)
         for i in csvDictTimes:
@@ -86,10 +71,6 @@ class Timer(QtCore.QTimer):
 
     def print(self):
         if self.lessons[self.nowLessonTime] == '下课' or self.lessons[self.nowLessonTime] == '午休':
-            if self.Now == 2:
-                ui.showMinimized()
-                ui.showNormal()
-            self.Now = 1
             try:
                 LL = self.lessons[csvDictTimes[self.nowLessonTimeii - 1]]
             except:
@@ -112,19 +93,15 @@ class Timer(QtCore.QTimer):
         >{NL}</span
       ></p>
       <p align="center" style="line-height: 0.6;">
-      <span style="font-size: 20pt; color: #000000;">还有{nm}分{ns}秒上课</span>
+      <span style="font-size: 20pt; color: #000000;">还有{d}{Th}</span>
     </p>
     <p align="center">
       <span style="font-size: 22pt; color: #000000;">{T}</span>
     </p>
   </body>
 </html>'''.format(LL=LL, NL=NL, T=time.strftime('%y/%m/%d %H:%M:%S', self.t.timetuple()),
-                  isthis='这' if self.sub <= 60 else '下', nm=self.sub // 60, ns=self.sub - self.sub // 60 * 60))
+                  isthis='这' if self.sub <= 60 else '下',d=str(self.tododay.days)+"天",Th=c.c["Thing"]))
         else:
-            if self.Now == 1:
-                ui.showMinimized()
-                ui.showNormal()
-            self.Now = 2
             ui.setText('''<html>
   <body>
     <p align="center">
@@ -134,16 +111,19 @@ class Timer(QtCore.QTimer):
       >
     </p>
     <p align="center">
-    <span style="font-size: 20pt; color: #000000;">还有{nm}分{ns}秒下课</span></p>
+    <span style="font-size: 20pt; color: #000000;">还有{d}{Th}</span></p>
     <p align="center">
       <span style="font-size: 22pt; color: #000000">{}</span>
     </p>
   </body>
 </html>'''.format(self.lessons[self.nowLessonTime], time.strftime('%y/%m/%d %H:%M:%S', self.t.timetuple()),
-                  nm=self.sub // 60, ns=self.sub - self.sub // 60 * 60))
+                  d=str(self.tododay.days)+"天",Th=c.c["Thing"]))
 
     def refresh(self):
-        self.t = datetime.datetime.now()
+        if c.c["Debug"]:
+            self.t = self.t+datetime.time(second=1)
+        else:
+            self.t = datetime.datetime.now()
         self.lessons = csvRowList[self.t.weekday()]
 
 
@@ -228,7 +208,7 @@ class Ui_classShowing(QtWidgets.QLabel):
 
 app = QtWidgets.QApplication(sys.argv)
 app.setQuitOnLastWindowClosed(False)
-lss = LocalSocSer(app_name)
+lss = LSS.LocalSocSer(app_name,ex_fun)
 
 with open('lessons.csv', 'r', newline='', encoding='gbk') as f:
     csvDictReader = csv.DictReader(f)
