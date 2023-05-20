@@ -1,8 +1,17 @@
 from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork
 import csv, sys, datetime, time
+from ..FLBasicModule.CONFIG import Config
 
 app_name = "DesktopTips"
-
+c=Config(
+    app_name=app_name,
+    format2={
+                "isOnOut":False,
+                "isOffOut":False
+             },
+    is_json=True,
+    is_log=False
+    )
 
 class LocalSocSer:
     def __init__(self, app_name: str):
@@ -235,3 +244,4 @@ timer = Timer()
 ui.show()
 
 app.exec_()
+c.save()
